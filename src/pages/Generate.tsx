@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Sparkles, LogOut, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import mermaid from "mermaid";
 
 const Generate = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const Generate = () => {
   const [loading, setLoading] = useState(false);
   const [diagram, setDiagram] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,8 +39,26 @@ const Generate = () => {
       }
     );
 
+    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (diagram && mermaidRef.current) {
+        try {
+          mermaidRef.current.innerHTML = '';
+          const { svg } = await mermaid.render('mermaid-diagram', diagram);
+          mermaidRef.current.innerHTML = svg;
+        } catch (error) {
+          console.error('Error rendering diagram:', error);
+          toast.error('Failed to render diagram');
+        }
+      }
+    };
+    renderDiagram();
+  }, [diagram]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -201,10 +221,8 @@ const Generate = () => {
                   <p className="text-muted-foreground">Generating your diagram...</p>
                 </div>
               ) : diagram ? (
-                <div className="bg-muted/30 rounded-lg p-6 border border-border">
-                  <pre className="whitespace-pre-wrap text-sm font-mono overflow-x-auto">
-                    {diagram}
-                  </pre>
+                <div className="bg-background rounded-lg p-6 border border-border overflow-auto max-h-[600px]">
+                  <div ref={mermaidRef} className="flex items-center justify-center min-h-[400px]" />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[400px] space-y-4 text-center">
