@@ -5,9 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Sparkles, LogOut, Loader2 } from "lucide-react";
+import { Sparkles, LogOut, Loader2, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import mermaid from "mermaid";
+import { DiagramHistory } from "@/components/DiagramHistory";
+import { ExamplePrompts } from "@/components/ExamplePrompts";
+import { DiagramExport } from "@/components/DiagramExport";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const Generate = () => {
   const navigate = useNavigate();
@@ -16,6 +21,9 @@ const Generate = () => {
   const [loading, setLoading] = useState(false);
   const [diagram, setDiagram] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(null);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
   const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,14 +104,24 @@ const Generate = () => {
       toast.success("Diagram generated!");
 
       // Save to database
-      const { error: saveError } = await supabase.from("diagrams").insert({
-        user_id: user.id,
-        prompt,
-        style,
-        diagram_data: data.diagram,
-      });
+      const { data: savedDiagram, error: saveError } = await supabase
+        .from("diagrams")
+        .insert({
+          user_id: user.id,
+          prompt,
+          style,
+          diagram_data: data.diagram,
+        })
+        .select()
+        .single();
 
-      if (saveError) console.error("Error saving diagram:", saveError);
+      if (saveError) {
+        console.error("Error saving diagram:", saveError);
+      } else if (savedDiagram) {
+        setCurrentDiagramId(savedDiagram.id);
+        setShareToken(savedDiagram.share_token);
+        setIsPublic(savedDiagram.is_public);
+      }
     } catch (error: any) {
       console.error("Error generating diagram:", error);
       toast.error(error.message || "Failed to generate diagram");
@@ -118,6 +136,22 @@ const Generate = () => {
     { id: "aws", label: "AWS Icons", description: "Cloud architecture" },
   ];
 
+  const handleSelectExample = (examplePrompt: string, exampleStyle: string) => {
+    setPrompt(examplePrompt);
+    setStyle(exampleStyle);
+    toast.success("Example loaded! Click generate to create diagram.");
+  };
+
+  const handleSelectDiagram = (selectedDiagram: any) => {
+    setPrompt(selectedDiagram.prompt);
+    setStyle(selectedDiagram.style);
+    setDiagram(selectedDiagram.diagram_data);
+    setCurrentDiagramId(selectedDiagram.id);
+    setShareToken(selectedDiagram.share_token);
+    setIsPublic(selectedDiagram.is_public);
+    toast.success("Diagram loaded from history");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
@@ -131,18 +165,42 @@ const Generate = () => {
               DiagramAI
             </h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <FeedbackDialog />
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <History className="w-4 h-4 mr-2" />
+                  History
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+                {user && <DiagramHistory onSelectDiagram={handleSelectDiagram} userId={user.id} />}
+              </SheetContent>
+            </Sheet>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12 max-w-6xl">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Input Section */}
+      <main className="container mx-auto px-4 py-12 max-w-7xl">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Examples Sidebar */}
           <Card className="shadow-[var(--shadow-card)] border-border/50 h-fit">
+            <CardHeader>
+              <CardTitle className="text-lg">Get Started</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ExamplePrompts onSelectExample={handleSelectExample} />
+            </CardContent>
+          </Card>
+
+          {/* Input Section */}
+          <Card className="shadow-[var(--shadow-card)] border-border/50 h-fit lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
@@ -214,16 +272,26 @@ const Generate = () => {
                 Your AI-generated architecture diagram
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-[400px] space-y-4">
                   <Loader2 className="w-12 h-12 animate-spin text-primary" />
                   <p className="text-muted-foreground">Generating your diagram...</p>
                 </div>
               ) : diagram ? (
-                <div className="bg-background rounded-lg p-6 border border-border overflow-auto max-h-[600px]">
-                  <div ref={mermaidRef} className="flex items-center justify-center min-h-[400px]" />
-                </div>
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <DiagramExport 
+                      diagramRef={mermaidRef} 
+                      diagramId={currentDiagramId || undefined}
+                      shareToken={shareToken || undefined}
+                      isPublic={isPublic}
+                    />
+                  </div>
+                  <div className="bg-background rounded-lg p-6 border border-border overflow-auto max-h-[600px]">
+                    <div ref={mermaidRef} className="flex items-center justify-center min-h-[400px]" />
+                  </div>
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[400px] space-y-4 text-center">
                   <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">

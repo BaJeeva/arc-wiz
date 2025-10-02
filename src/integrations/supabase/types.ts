@@ -19,7 +19,9 @@ export type Database = {
           created_at: string
           diagram_data: string
           id: string
+          is_public: boolean | null
           prompt: string
+          share_token: string | null
           style: string
           updated_at: string
           user_id: string
@@ -28,7 +30,9 @@ export type Database = {
           created_at?: string
           diagram_data: string
           id?: string
+          is_public?: boolean | null
           prompt: string
+          share_token?: string | null
           style: string
           updated_at?: string
           user_id: string
@@ -37,7 +41,9 @@ export type Database = {
           created_at?: string
           diagram_data?: string
           id?: string
+          is_public?: boolean | null
           prompt?: string
+          share_token?: string | null
           style?: string
           updated_at?: string
           user_id?: string
