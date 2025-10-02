@@ -24,7 +24,10 @@ const Generate = () => {
   const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const mermaidRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -73,25 +76,29 @@ const Generate = () => {
     navigate("/auth");
   };
 
-  const generateDiagram = async () => {
+  const generateDiagramWithPreview = async (isPreview: boolean = false) => {
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");
       return;
     }
 
-    setLoading(true);
-    setDiagram(null);
+    if (isPreview) {
+      setPreviewLoading(true);
+    } else {
+      setLoading(true);
+      setDiagram(null);
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-diagram", {
-        body: { prompt, style },
+        body: { prompt, style, userId: user?.id },
       });
 
       if (error) throw error;
 
       if (data.error) {
         if (data.error.includes("Rate limit") || data.error.includes("429")) {
-          toast.error("Rate limit exceeded. Please try again in a moment.");
+          toast.error("Rate limit exceeded. You can make 50 requests per hour. Please try again later.");
         } else if (data.error.includes("Payment required") || data.error.includes("402")) {
           toast.error("Payment required. Please add credits to your workspace.");
         } else {
@@ -101,34 +108,61 @@ const Generate = () => {
       }
 
       setDiagram(data.diagram);
-      toast.success("Diagram generated!");
+      if (!isPreview) {
+        toast.success("Diagram generated!");
 
-      // Save to database
-      const { data: savedDiagram, error: saveError } = await supabase
-        .from("diagrams")
-        .insert({
-          user_id: user.id,
-          prompt,
-          style,
-          diagram_data: data.diagram,
-        })
-        .select()
-        .single();
+        // Save to database only for full generation
+        const { data: savedDiagram, error: saveError } = await supabase
+          .from("diagrams")
+          .insert({
+            user_id: user.id,
+            prompt,
+            style,
+            diagram_data: data.diagram,
+          })
+          .select()
+          .single();
 
-      if (saveError) {
-        console.error("Error saving diagram:", saveError);
-      } else if (savedDiagram) {
-        setCurrentDiagramId(savedDiagram.id);
-        setShareToken(savedDiagram.share_token);
-        setIsPublic(savedDiagram.is_public);
+        if (saveError) {
+          console.error("Error saving diagram:", saveError);
+        } else if (savedDiagram) {
+          setCurrentDiagramId(savedDiagram.id);
+          setShareToken(savedDiagram.share_token);
+          setIsPublic(savedDiagram.is_public);
+        }
       }
     } catch (error: any) {
       console.error("Error generating diagram:", error);
       toast.error(error.message || "Failed to generate diagram");
     } finally {
-      setLoading(false);
+      if (isPreview) {
+        setPreviewLoading(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
+
+  const generateDiagram = () => generateDiagramWithPreview(false);
+
+  // Real-time preview with debouncing
+  useEffect(() => {
+    if (!showPreview || !prompt.trim() || prompt.length < 10) return;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      generateDiagramWithPreview(true);
+    }, 2000); // 2 second debounce
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [prompt, style, showPreview]);
 
   const styles = [
     { id: "colored", label: "Colored", description: "Vibrant and modern" },
@@ -212,13 +246,31 @@ const Generate = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Your Prompt</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Your Prompt</label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={showPreview}
+                        onChange={(e) => setShowPreview(e.target.checked)}
+                        className="rounded"
+                      />
+                      Real-time preview
+                    </label>
+                  </div>
+                </div>
                 <Textarea
                   placeholder="e.g., Create a microservices architecture with API gateway, user service, payment service, and PostgreSQL database"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   className="min-h-[150px] resize-none"
                 />
+                {showPreview && previewLoading && (
+                  <p className="text-xs text-muted-foreground animate-pulse">
+                    Generating preview...
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -312,7 +364,7 @@ const Generate = () => {
         {/* Info Badge */}
         <div className="mt-8 flex justify-center">
           <Badge variant="secondary" className="px-4 py-2">
-            💡 Powered by Lovable AI - Gemini models are free during October 2025
+            💡 Free tier: 50 diagrams per hour • Gemini models are free during October 2025
           </Badge>
         </div>
       </main>

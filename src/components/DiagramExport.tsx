@@ -3,6 +3,7 @@ import { Download, Share2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import jsPDF from "jspdf";
 
 interface DiagramExportProps {
   diagramRef: React.RefObject<HTMLDivElement>;
@@ -79,6 +80,50 @@ export const DiagramExport = ({ diagramRef, diagramId, shareToken, isPublic }: D
     }
   };
 
+  const exportAsPDF = async () => {
+    if (!diagramRef.current) return;
+    
+    const svg = diagramRef.current.querySelector("svg");
+    if (!svg) {
+      toast.error("No diagram to export");
+      return;
+    }
+
+    try {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+
+        // Create PDF
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [canvas.width, canvas.height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save("diagram.pdf");
+        toast.success("PDF exported");
+      };
+
+      img.src = url;
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF");
+    }
+  };
+
   const handleShare = async () => {
     if (!diagramId) {
       toast.error("Save the diagram first to share");
@@ -116,6 +161,10 @@ export const DiagramExport = ({ diagramRef, diagramId, shareToken, isPublic }: D
       <Button variant="outline" size="sm" onClick={exportAsPNG}>
         <Download className="w-4 h-4 mr-2" />
         Export PNG
+      </Button>
+      <Button variant="outline" size="sm" onClick={exportAsPDF}>
+        <Download className="w-4 h-4 mr-2" />
+        Export PDF
       </Button>
       <Button 
         variant="outline" 
