@@ -52,6 +52,16 @@ const SharedDiagram = () => {
         return;
       }
 
+      // Check if link has expired
+      if (data.expires_at) {
+        const expirationDate = new Date(data.expires_at);
+        if (expirationDate < new Date()) {
+          toast.error("This share link has expired");
+          navigate("/");
+          return;
+        }
+      }
+
       setDiagram(data);
     } catch (error) {
       console.error("Error fetching shared diagram:", error);

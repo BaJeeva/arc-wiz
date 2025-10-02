@@ -1,9 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { Download, Share2, Check } from "lucide-react";
+import { Download, Share2, Check, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DiagramExportProps {
   diagramRef: React.RefObject<HTMLDivElement>;
@@ -15,6 +22,7 @@ interface DiagramExportProps {
 export const DiagramExport = ({ diagramRef, diagramId, shareToken, isPublic }: DiagramExportProps) => {
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [expirationDays, setExpirationDays] = useState<string>("7");
 
   const exportAsSVG = () => {
     if (!diagramRef.current) return;
@@ -132,9 +140,15 @@ export const DiagramExport = ({ diagramRef, diagramId, shareToken, isPublic }: D
 
     setSharing(true);
     try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + parseInt(expirationDays));
+
       const { error } = await supabase
         .from("diagrams")
-        .update({ is_public: true })
+        .update({ 
+          is_public: true,
+          expires_at: expiresAt.toISOString()
+        })
         .eq("id", diagramId);
 
       if (error) throw error;
@@ -143,7 +157,7 @@ export const DiagramExport = ({ diagramRef, diagramId, shareToken, isPublic }: D
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success("Share link copied to clipboard!");
+      toast.success(`Share link copied! Expires in ${expirationDays} days`);
     } catch (error) {
       console.error("Error sharing diagram:", error);
       toast.error("Failed to create share link");
@@ -166,19 +180,34 @@ export const DiagramExport = ({ diagramRef, diagramId, shareToken, isPublic }: D
         <Download className="w-4 h-4 mr-2" />
         Export PDF
       </Button>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={handleShare}
-        disabled={sharing || !diagramId}
-      >
-        {copied ? (
-          <Check className="w-4 h-4 mr-2" />
-        ) : (
-          <Share2 className="w-4 h-4 mr-2" />
-        )}
-        {copied ? "Link Copied!" : "Share"}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Select value={expirationDays} onValueChange={setExpirationDays}>
+          <SelectTrigger className="w-[140px] h-9">
+            <Clock className="w-4 h-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">1 day</SelectItem>
+            <SelectItem value="7">7 days</SelectItem>
+            <SelectItem value="30">30 days</SelectItem>
+            <SelectItem value="90">90 days</SelectItem>
+            <SelectItem value="365">1 year</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleShare}
+          disabled={sharing || !diagramId}
+        >
+          {copied ? (
+            <Check className="w-4 h-4 mr-2" />
+          ) : (
+            <Share2 className="w-4 h-4 mr-2" />
+          )}
+          {copied ? "Link Copied!" : "Share"}
+        </Button>
+      </div>
     </div>
   );
 };

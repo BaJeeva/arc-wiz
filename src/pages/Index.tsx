@@ -1,9 +1,72 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Zap, Shield, Layers } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles, Zap, Shield, Layers, Check } from "lucide-react";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { toast } from "sonner";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { openCheckout, plan } = useSubscription();
+
+  const handlePricingClick = async (priceId: string, planName: string) => {
+    try {
+      await openCheckout(priceId);
+      toast.success(`Opening checkout for ${planName} plan`);
+    } catch (error) {
+      toast.error("Please sign in first to subscribe");
+      navigate("/auth");
+    }
+  };
+
+  const pricingPlans = [
+    {
+      name: "Free",
+      price: "$0",
+      description: "Perfect for trying out DiagramAI",
+      features: [
+        "50 diagrams per hour",
+        "All diagram styles",
+        "Basic export options",
+        "7-day history",
+      ],
+      cta: "Get Started",
+      onClick: () => navigate("/auth"),
+      highlighted: false,
+    },
+    {
+      name: "Pro",
+      price: "$9.90",
+      priceId: "price_1SDuIG52ySA6lezKSi8o7c2O",
+      description: "For professionals and small teams",
+      features: [
+        "Unlimited diagrams",
+        "Priority AI processing",
+        "Advanced export (PDF, SVG)",
+        "Unlimited history",
+        "Priority support",
+        "Custom templates",
+      ],
+      cta: "Upgrade to Pro",
+      highlighted: true,
+    },
+    {
+      name: "Enterprise",
+      price: "$29.90",
+      priceId: "price_1SDuIT52ySA6lezK89TpMuI4",
+      description: "For large teams and organizations",
+      features: [
+        "Everything in Pro",
+        "Team collaboration",
+        "Custom branding",
+        "Dedicated support",
+        "SLA guarantee",
+        "Advanced security",
+      ],
+      cta: "Upgrade to Enterprise",
+      highlighted: false,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -95,11 +158,66 @@ const Index = () => {
       <section className="container mx-auto px-4 py-24">
         <div className="max-w-4xl mx-auto text-center space-y-8 p-12 rounded-3xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
           <h2 className="text-4xl md:text-5xl font-bold">
-            Ready to Create Amazing Diagrams?
+            Choose Your Plan
           </h2>
           <p className="text-xl text-muted-foreground">
-            Join now and start generating professional diagrams with AI.
+            Start free, upgrade when you need more power
           </p>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="container mx-auto px-4 py-12">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
+          {pricingPlans.map((plan) => (
+            <Card
+              key={plan.name}
+              className={`relative shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-primary)] transition-all ${
+                plan.highlighted ? "border-2 border-primary scale-105" : "border-border/50"
+              }`}
+            >
+              {plan.highlighted && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
+                  Most Popular
+                </div>
+              )}
+              <CardHeader>
+                <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.description}</CardDescription>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold">{plan.price}</span>
+                  {plan.price !== "$0" && <span className="text-muted-foreground">/month</span>}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-3">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={plan.highlighted ? "default" : "outline"}
+                  className="w-full"
+                  onClick={() =>
+                    plan.priceId
+                      ? handlePricingClick(plan.priceId, plan.name)
+                      : plan.onClick?.()
+                  }
+                >
+                  {plan.cta}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="container mx-auto px-4 py-24">
+        <div className="max-w-4xl mx-auto text-center space-y-8">
           <Button
             variant="hero"
             size="lg"

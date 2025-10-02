@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           diagram_data: string
+          expires_at: string | null
           id: string
           is_public: boolean | null
           prompt: string
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           created_at?: string
           diagram_data: string
+          expires_at?: string | null
           id?: string
           is_public?: boolean | null
           prompt: string
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           created_at?: string
           diagram_data?: string
+          expires_at?: string | null
           id?: string
           is_public?: boolean | null
           prompt?: string

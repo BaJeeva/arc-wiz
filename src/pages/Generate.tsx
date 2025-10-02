@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Sparkles, LogOut, Loader2, History } from "lucide-react";
+import { Sparkles, LogOut, Loader2, History, Crown, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import mermaid from "mermaid";
 import { DiagramHistory } from "@/components/DiagramHistory";
@@ -13,9 +13,12 @@ import { ExamplePrompts } from "@/components/ExamplePrompts";
 import { DiagramExport } from "@/components/DiagramExport";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Generate = () => {
   const navigate = useNavigate();
+  const { plan, subscribed, openPortal, openCheckout, refreshSubscription } = useSubscription();
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("colored");
   const [loading, setLoading] = useState(false);
@@ -190,33 +193,67 @@ const Generate = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-[var(--shadow-primary)]">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-[var(--shadow-primary)]">
+                <Sparkles className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                DiagramAI
+              </h1>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              DiagramAI
-            </h1>
+            <div className="flex items-center gap-2">
+              <FeedbackDialog />
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <History className="w-4 h-4 mr-2" />
+                    History
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+                  {user && <DiagramHistory onSelectDiagram={handleSelectDiagram} userId={user.id} />}
+                </SheetContent>
+              </Sheet>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <FeedbackDialog />
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <History className="w-4 h-4 mr-2" />
-                  History
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                {user && <DiagramHistory onSelectDiagram={handleSelectDiagram} userId={user.id} />}
-              </SheetContent>
-            </Sheet>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
+          
+          {/* Subscription Status Banner */}
+          <Alert className={`${plan === "free" ? "border-muted" : "border-primary bg-primary/5"}`}>
+            <AlertDescription className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {plan !== "free" && <Crown className="w-4 h-4 text-primary" />}
+                <span className="font-medium capitalize">{plan} Plan</span>
+                {plan === "free" && (
+                  <span className="text-xs text-muted-foreground">• 50 diagrams/hour</span>
+                )}
+                {plan !== "free" && (
+                  <span className="text-xs text-muted-foreground">• Unlimited diagrams</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {plan === "free" ? (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => openCheckout("price_1SDuIG52ySA6lezKSi8o7c2O")}
+                  >
+                    <Zap className="w-3 h-3 mr-1" />
+                    Upgrade to Pro
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={openPortal}>
+                    Manage Subscription
+                  </Button>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
       </header>
 
@@ -364,7 +401,8 @@ const Generate = () => {
         {/* Info Badge */}
         <div className="mt-8 flex justify-center">
           <Badge variant="secondary" className="px-4 py-2">
-            💡 Free tier: 50 diagrams per hour • Gemini models are free during October 2025
+            💡 Gemini models are free during October 2025 
+            {plan === "free" && " • Free tier: 50 diagrams per hour"}
           </Badge>
         </div>
       </main>
