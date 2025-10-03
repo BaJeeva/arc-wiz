@@ -258,144 +258,149 @@ const Generate = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12 max-w-7xl">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="grid lg:grid-cols-[280px_1fr] gap-6">
           {/* Examples Sidebar */}
           <Card className="shadow-[var(--shadow-card)] border-border/50 h-fit">
             <CardHeader>
-              <CardTitle className="text-lg">Get Started</CardTitle>
+              <CardTitle className="text-lg">Examples</CardTitle>
             </CardHeader>
             <CardContent>
               <ExamplePrompts onSelectExample={handleSelectExample} />
             </CardContent>
           </Card>
 
-          {/* Input Section */}
-          <Card className="shadow-[var(--shadow-card)] border-border/50 h-fit lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Generate Diagram
-              </CardTitle>
-              <CardDescription>
-                Describe your architecture or system in natural language
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Your Prompt</label>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-muted-foreground flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={showPreview}
-                        onChange={(e) => setShowPreview(e.target.checked)}
-                        className="rounded"
-                      />
-                      Real-time preview
-                    </label>
+          {/* Main Content Area */}
+          <div className="space-y-6">
+            {/* Input Section */}
+            <Card className="shadow-[var(--shadow-card)] border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Generate Diagram
+                </CardTitle>
+                <CardDescription>
+                  Describe your architecture or system in natural language
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Your Prompt</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-muted-foreground flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={showPreview}
+                          onChange={(e) => setShowPreview(e.target.checked)}
+                          className="rounded"
+                        />
+                        Real-time preview
+                      </label>
+                    </div>
+                  </div>
+                  <Textarea
+                    placeholder="e.g., Create a microservices architecture with API gateway, user service, payment service, and PostgreSQL database"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="min-h-[120px] resize-none"
+                  />
+                  {showPreview && previewLoading && (
+                    <p className="text-xs text-muted-foreground animate-pulse">
+                      Generating preview...
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Style</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {styles.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setStyle(s.id)}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          style === s.id
+                            ? "border-primary bg-primary/5 shadow-[var(--shadow-primary)]"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="font-medium text-sm mb-1">{s.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.description}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <Textarea
-                  placeholder="e.g., Create a microservices architecture with API gateway, user service, payment service, and PostgreSQL database"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[150px] resize-none"
-                />
-                {showPreview && previewLoading && (
-                  <p className="text-xs text-muted-foreground animate-pulse">
-                    Generating preview...
-                  </p>
-                )}
-              </div>
 
-              <div className="space-y-3">
-                <label className="text-sm font-medium">Style</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {styles.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setStyle(s.id)}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        style === s.id
-                          ? "border-primary bg-primary/5 shadow-[var(--shadow-primary)]"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <div className="font-medium text-sm mb-1">{s.label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {s.description}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                <Button
+                  onClick={generateDiagram}
+                  variant="hero"
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Diagram
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
 
-              <Button
-                onClick={generateDiagram}
-                variant="hero"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Diagram
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Output Section */}
-          <Card className="shadow-[var(--shadow-card)] border-border/50">
-            <CardHeader>
-              <CardTitle>Generated Diagram</CardTitle>
-              <CardDescription>
-                Your AI-generated architecture diagram
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center h-[400px] space-y-4">
-                  <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                  <p className="text-muted-foreground">Generating your diagram...</p>
-                </div>
-              ) : diagram ? (
-                <>
-                  <div className="flex items-center justify-between mb-4">
+            {/* Output Section - Full Width */}
+            <Card className="shadow-[var(--shadow-card)] border-border/50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Generated Diagram</CardTitle>
+                    <CardDescription>
+                      Your AI-generated architecture diagram
+                    </CardDescription>
+                  </div>
+                  {diagram && currentDiagramId && (
                     <DiagramExport 
                       diagramRef={mermaidRef} 
                       diagramId={currentDiagramId || undefined}
                       shareToken={shareToken || undefined}
                       isPublic={isPublic}
                     />
-                  </div>
-                  <div className="bg-background rounded-lg p-6 border border-border overflow-auto max-h-[600px]">
-                    <div ref={mermaidRef} className="flex items-center justify-center min-h-[400px]" />
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[400px] space-y-4 text-center">
-                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <Sparkles className="w-12 h-12 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium mb-2">No diagram yet</p>
-                    <p className="text-sm text-muted-foreground">
-                      Enter a prompt and click generate to create your diagram
-                    </p>
-                  </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center h-[600px] space-y-4">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Generating your diagram...</p>
+                  </div>
+                ) : diagram ? (
+                  <div className="bg-background rounded-lg p-8 border border-border overflow-auto">
+                    <div ref={mermaidRef} className="flex items-center justify-center min-h-[700px] w-full" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[600px] space-y-4 text-center">
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                      <Sparkles className="w-12 h-12 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium mb-2">No diagram yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Enter a prompt and click generate to create your diagram
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Info Badge */}
