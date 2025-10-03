@@ -52,7 +52,7 @@ const Index = () => {
     },
     {
       name: "Enterprise",
-      price: "$29.90",
+      price: "$20.00",
       priceId: "price_1SDuIT52ySA6lezK89TpMuI4",
       description: "For large teams and organizations",
       features: [
