@@ -65,11 +65,18 @@ const Generate = () => {
       if (diagram && mermaidRef.current) {
         try {
           mermaidRef.current.innerHTML = '';
-          const { svg } = await mermaid.render('mermaid-diagram', diagram);
+          // Strip markdown code fences if present
+          let cleanDiagram = diagram.trim();
+          if (cleanDiagram.startsWith('```mermaid')) {
+            cleanDiagram = cleanDiagram.replace(/^```mermaid\n/, '').replace(/\n```$/, '');
+          } else if (cleanDiagram.startsWith('```')) {
+            cleanDiagram = cleanDiagram.replace(/^```\n/, '').replace(/\n```$/, '');
+          }
+          const { svg } = await mermaid.render('mermaid-diagram', cleanDiagram);
           mermaidRef.current.innerHTML = svg;
         } catch (error) {
           console.error('Error rendering diagram:', error);
-          toast.error('Failed to render diagram');
+          toast.error('Failed to render diagram. Please try again.');
         }
       }
     };
