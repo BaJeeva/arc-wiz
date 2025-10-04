@@ -292,9 +292,9 @@ GCP: Compute Engine, Cloud Storage, Cloud SQL, Cloud Functions, Kubernetes Engin
     }
 
     const data = await response.json();
-    const diagram = data.choices?.[0]?.message?.content;
+    let content = data.choices?.[0]?.message?.content as string | undefined;
 
-    if (!diagram) {
+    if (!content) {
       console.error('No diagram content in response');
       return new Response(
         JSON.stringify({ error: 'Failed to generate diagram content' }),
@@ -302,10 +302,15 @@ GCP: Compute Engine, Cloud Storage, Cloud SQL, Cloud Functions, Kubernetes Engin
       );
     }
 
+    // Extract mermaid code block if wrapped in fences
+    const mm = content.match(/```mermaid\s*([\s\S]*?)```/i);
+    const any = content.match(/```\s*([\s\S]*?)```/i);
+    const cleaned = (mm ? mm[1] : (any ? any[1] : content)).trim();
+
     console.log('Successfully generated diagram');
 
     return new Response(
-      JSON.stringify({ diagram }),
+      JSON.stringify({ diagram: cleaned }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

@@ -55,7 +55,7 @@ const Generate = () => {
       }
     );
 
-    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose', flowchart: { htmlLabels: true } });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -65,13 +65,12 @@ const Generate = () => {
       if (diagram && mermaidRef.current) {
         try {
           mermaidRef.current.innerHTML = '';
-          // Strip markdown code fences if present
+          // Extract Mermaid code block anywhere in the response
           let cleanDiagram = diagram.trim();
-          if (cleanDiagram.startsWith('```mermaid')) {
-            cleanDiagram = cleanDiagram.replace(/^```mermaid\n/, '').replace(/\n```$/, '');
-          } else if (cleanDiagram.startsWith('```')) {
-            cleanDiagram = cleanDiagram.replace(/^```\n/, '').replace(/\n```$/, '');
-          }
+          const mermaidBlock = cleanDiagram.match(/```mermaid\s*([\s\S]*?)```/i);
+          const anyBlock = cleanDiagram.match(/```\s*([\s\S]*?)```/i);
+          if (mermaidBlock) cleanDiagram = mermaidBlock[1].trim();
+          else if (anyBlock) cleanDiagram = anyBlock[1].trim();
           const { svg } = await mermaid.render('mermaid-diagram', cleanDiagram);
           mermaidRef.current.innerHTML = svg;
         } catch (error) {

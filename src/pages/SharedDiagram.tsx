@@ -16,7 +16,7 @@ const SharedDiagram = () => {
   const mermaidRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose', flowchart: { htmlLabels: true } });
     fetchSharedDiagram();
   }, [shareToken]);
 
@@ -25,7 +25,12 @@ const SharedDiagram = () => {
       if (diagram?.diagram_data && mermaidRef.current) {
         try {
           mermaidRef.current.innerHTML = '';
-          const { svg } = await mermaid.render('shared-diagram', diagram.diagram_data);
+          let clean = String(diagram.diagram_data).trim();
+          const mm = clean.match(/```mermaid\s*([\s\S]*?)```/i);
+          const any = clean.match(/```\s*([\s\S]*?)```/i);
+          if (mm) clean = mm[1].trim();
+          else if (any) clean = any[1].trim();
+          const { svg } = await mermaid.render('shared-diagram', clean);
           mermaidRef.current.innerHTML = svg;
         } catch (error) {
           console.error('Error rendering diagram:', error);
