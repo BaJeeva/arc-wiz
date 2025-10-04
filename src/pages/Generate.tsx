@@ -15,6 +15,7 @@ import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DiagramConfigDialog, DiagramConfig } from "@/components/DiagramConfigDialog";
 
 const Generate = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const Generate = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
   const mermaidRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -79,8 +81,35 @@ const Generate = () => {
     navigate("/auth");
   };
 
-  const generateDiagramWithPreview = async (isPreview: boolean = false) => {
-    if (!prompt.trim()) {
+  const generateDiagramWithPreview = async (isPreview: boolean = false, config?: DiagramConfig) => {
+    let finalPrompt = prompt;
+    
+    // If config is provided, enhance the prompt with configuration details
+    if (config) {
+      const enhancements = [];
+      
+      if (config.diagramType.length > 0) {
+        enhancements.push(`Include: ${config.diagramType.join(", ")}`);
+      }
+      
+      if (config.complexity) {
+        enhancements.push(`Detail level: ${config.complexity}`);
+      }
+      
+      if (config.cloudProviders.length > 0) {
+        enhancements.push(`Use ${config.cloudProviders.join(", ")} icons and services`);
+      }
+      
+      if (config.additionalDetails) {
+        enhancements.push(`Additional requirements: ${config.additionalDetails}`);
+      }
+      
+      if (enhancements.length > 0) {
+        finalPrompt = `${prompt}\n\n${enhancements.join(". ")}.`;
+      }
+    }
+    
+    if (!finalPrompt.trim()) {
       toast.error("Please enter a prompt");
       return;
     }
@@ -94,7 +123,7 @@ const Generate = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-diagram", {
-        body: { prompt, style, userId: user?.id },
+        body: { prompt: finalPrompt, style, userId: user?.id },
       });
 
       if (error) throw error;
@@ -119,7 +148,7 @@ const Generate = () => {
           .from("diagrams")
           .insert({
             user_id: user.id,
-            prompt,
+            prompt: finalPrompt,
             style,
             diagram_data: data.diagram,
           })
@@ -146,7 +175,18 @@ const Generate = () => {
     }
   };
 
-  const generateDiagram = () => generateDiagramWithPreview(false);
+  const handleOpenConfigDialog = () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a prompt first");
+      return;
+    }
+    setShowConfigDialog(true);
+  };
+
+  const handleGenerateWithConfig = (config: DiagramConfig) => {
+    setShowConfigDialog(false);
+    generateDiagramWithPreview(false, config);
+  };
 
   // Real-time preview with debouncing
   useEffect(() => {
@@ -335,7 +375,7 @@ const Generate = () => {
                 </div>
 
                 <Button
-                  onClick={generateDiagram}
+                  onClick={handleOpenConfigDialog}
                   variant="hero"
                   className="w-full"
                   disabled={loading}
@@ -411,6 +451,15 @@ const Generate = () => {
           </Badge>
         </div>
       </main>
+
+      {/* Configuration Dialog */}
+      <DiagramConfigDialog
+        open={showConfigDialog}
+        onOpenChange={setShowConfigDialog}
+        initialPrompt={prompt}
+        onGenerate={handleGenerateWithConfig}
+        loading={loading}
+      />
     </div>
   );
 };
