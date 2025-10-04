@@ -71,11 +71,38 @@ const Generate = () => {
           const anyBlock = cleanDiagram.match(/```\s*([\s\S]*?)```/i);
           if (mermaidBlock) cleanDiagram = mermaidBlock[1].trim();
           else if (anyBlock) cleanDiagram = anyBlock[1].trim();
-          const { svg } = await mermaid.render('mermaid-diagram', cleanDiagram);
+          
+          // Validate Mermaid syntax before rendering
+          console.log('Rendering Mermaid (first 200 chars):', cleanDiagram.substring(0, 200));
+          
+          try {
+            await mermaid.parse(cleanDiagram);
+          } catch (parseError: any) {
+            console.error('Mermaid parse error:', parseError);
+            toast.error(`Invalid diagram syntax: ${parseError.message || 'Parse failed'}`);
+            mermaidRef.current.innerHTML = `<div class="p-4 border border-destructive rounded bg-destructive/10">
+              <p class="font-semibold text-destructive mb-2">Diagram Syntax Error</p>
+              <pre class="text-xs overflow-auto">${parseError.message || 'Parse failed'}</pre>
+              <details class="mt-2">
+                <summary class="cursor-pointer text-xs">Show raw Mermaid code</summary>
+                <pre class="mt-2 text-xs overflow-auto bg-muted p-2 rounded">${cleanDiagram}</pre>
+              </details>
+            </div>`;
+            return;
+          }
+          
+          const renderId = `mermaid-${Date.now()}`;
+          const { svg } = await mermaid.render(renderId, cleanDiagram);
           mermaidRef.current.innerHTML = svg;
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error rendering diagram:', error);
-          toast.error('Failed to render diagram. Please try again.');
+          toast.error('Failed to render diagram. Check console for details.');
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = `<div class="p-4 border border-destructive rounded bg-destructive/10">
+              <p class="font-semibold text-destructive">Render failed</p>
+              <p class="text-xs mt-1">${error.message || 'Unknown error'}</p>
+            </div>`;
+          }
         }
       }
     };
@@ -89,6 +116,7 @@ const Generate = () => {
 
   const generateDiagramWithPreview = async (isPreview: boolean = false, config?: DiagramConfig) => {
     let finalPrompt = prompt;
+    let finalStyle = style;
     
     // If config is provided, enhance the prompt with configuration details
     if (config) {
@@ -103,7 +131,11 @@ const Generate = () => {
       }
       
       if (config.cloudProviders.length > 0) {
-        enhancements.push(`Use ${config.cloudProviders.join(", ")} icons and services`);
+        enhancements.push(`MANDATORY: Use ${config.cloudProviders.join(", ")} service icons with embedded images`);
+        // Auto-set style based on primary cloud provider
+        if (config.cloudProviders.includes('AWS')) finalStyle = 'aws';
+        else if (config.cloudProviders.includes('Azure')) finalStyle = 'azure';
+        else if (config.cloudProviders.includes('GCP')) finalStyle = 'gcp';
       }
       
       if (config.additionalDetails) {
@@ -129,7 +161,7 @@ const Generate = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-diagram", {
-        body: { prompt: finalPrompt, style, userId: user?.id },
+        body: { prompt: finalPrompt, style: finalStyle, userId: user?.id },
       });
 
       if (error) throw error;

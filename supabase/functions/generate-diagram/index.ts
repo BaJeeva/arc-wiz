@@ -228,27 +228,60 @@ Use GCP's color palette in styling.`;
       styleInstruction = 'Use clear, colored boxes and connectors with professional styling.';
     }
 
+    // Build icon URLs based on style/cloud providers
+    let iconInstructions = '';
+    if (style === 'aws' || prompt.toLowerCase().includes('aws')) {
+      iconInstructions = `
+MANDATORY: Use these exact AWS service icon URLs in your diagram:
+${Object.entries(ICON_LIBRARIES.aws).map(([key, url]) => `- ${key.toUpperCase()}: ${url}`).join('\n')}
+
+Example node format: A["<img src='${ICON_LIBRARIES.aws.ec2}' width='50'><br><b>EC2 Instance</b>"]`;
+    } else if (style === 'azure' || prompt.toLowerCase().includes('azure')) {
+      iconInstructions = `
+MANDATORY: Use these exact Azure service icon URLs in your diagram:
+${Object.entries(ICON_LIBRARIES.azure).map(([key, url]) => `- ${key.toUpperCase()}: ${url}`).join('\n')}
+
+Example node format: A["<img src='${ICON_LIBRARIES.azure.vm}' width='50'><br><b>Virtual Machine</b>"]`;
+    } else if (style === 'gcp' || prompt.toLowerCase().includes('gcp') || prompt.toLowerCase().includes('google cloud')) {
+      iconInstructions = `
+MANDATORY: Use these exact GCP service icon URLs in your diagram:
+${Object.entries(ICON_LIBRARIES.gcp).map(([key, url]) => `- ${key.toUpperCase()}: ${url}`).join('\n')}
+
+Example node format: A["<img src='${ICON_LIBRARIES.gcp.compute}' width='50'><br><b>Compute Engine</b>"]`;
+    }
+
     const systemPrompt = `You are an expert at creating professional architecture diagrams using Mermaid syntax, similar to eraser.io's AI diagram capabilities.
 
-CRITICAL RULES:
-1. ALWAYS use cloud provider service icons when mentioned (AWS, Azure, GCP)
-2. Format icons as: [<img src='ICON_URL' width='50px'><br>Service Name]
-3. Use proper Mermaid syntax: graph TD or LR for flowcharts
-4. Add professional styling with colors that match the cloud provider
-5. Show clear data flow and relationships between components
-6. Use subgraphs to group related services
-7. Include proper arrow labels to show interactions
+CRITICAL RULES - FOLLOW EXACTLY:
+1. Output ONLY pure Mermaid syntax - NO explanatory text before or after
+2. Start directly with "graph TD" or "graph LR" or other mermaid diagram type
+3. ALWAYS embed service icons using the provided URLs
+4. Icon format MUST be: NodeID["<img src='ICON_URL' width='50'><br><b>Service Name</b>"]
+5. Use subgraphs to group related services
+6. Add clear arrow labels showing data flow
+7. Apply professional color styling
 
 ${styleInstruction}
 
-Always output ONLY valid Mermaid diagram syntax wrapped in \`\`\`mermaid blocks.
-Focus on clarity, professional appearance, and accurate cloud architecture representations.
-Use appropriate diagram types (flowchart, sequence, class, etc.) based on the use case.
+${iconInstructions}
 
-ICON LIBRARIES AVAILABLE:
-AWS: EC2, S3, RDS, Lambda, VPC, ELB, CloudFront, DynamoDB, SQS, SNS, ElastiCache, API Gateway, ECS, EKS
-Azure: VM, Storage, SQL, Functions, Kubernetes, Cosmos DB
-GCP: Compute Engine, Cloud Storage, Cloud SQL, Cloud Functions, Kubernetes Engine`;
+OUTPUT FORMAT - CRITICAL:
+- Start immediately with diagram type (graph TD, sequenceDiagram, etc.)
+- No prose, no explanations, no markdown except the diagram itself
+- Every cloud service MUST have its icon embedded
+- Use double quotes for labels with HTML
+
+Example (AWS):
+graph TD
+    A["<img src='${ICON_LIBRARIES.aws.api_gateway}' width='50'><br><b>API Gateway</b>"]
+    B["<img src='${ICON_LIBRARIES.aws.lambda}' width='50'><br><b>Lambda Function</b>"]
+    C["<img src='${ICON_LIBRARIES.aws.rds}' width='50'><br><b>RDS Database</b>"]
+    A -->|HTTP Request| B
+    B -->|Query| C
+    
+    style A fill:#D6EAF8,stroke:#3498DB
+    style B fill:#D4EFDF,stroke:#28B463
+    style C fill:#FADBD8,stroke:#CB4335`;
 
     console.log('Generating diagram for prompt:', prompt, 'with style:', style);
 
@@ -305,9 +338,24 @@ GCP: Compute Engine, Cloud Storage, Cloud SQL, Cloud Functions, Kubernetes Engin
     // Extract mermaid code block if wrapped in fences
     const mm = content.match(/```mermaid\s*([\s\S]*?)```/i);
     const any = content.match(/```\s*([\s\S]*?)```/i);
-    const cleaned = (mm ? mm[1] : (any ? any[1] : content)).trim();
+    let cleaned = (mm ? mm[1] : (any ? any[1] : content)).trim();
+    
+    // Remove any leading/trailing prose that might have snuck in
+    const lines = cleaned.split('\n');
+    const firstDiagramLine = lines.findIndex(l => 
+      l.trim().startsWith('graph ') || 
+      l.trim().startsWith('sequenceDiagram') || 
+      l.trim().startsWith('classDiagram') ||
+      l.trim().startsWith('flowchart') ||
+      l.trim().startsWith('erDiagram') ||
+      l.trim().startsWith('gantt')
+    );
+    
+    if (firstDiagramLine > 0) {
+      cleaned = lines.slice(firstDiagramLine).join('\n').trim();
+    }
 
-    console.log('Successfully generated diagram');
+    console.log('Successfully generated diagram. First 200 chars:', cleaned.substring(0, 200));
 
     return new Response(
       JSON.stringify({ diagram: cleaned }),
