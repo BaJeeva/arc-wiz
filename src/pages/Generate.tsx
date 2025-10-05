@@ -31,8 +31,44 @@ const Generate = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
   const mermaidRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-load most recent diagram on mount
+  useEffect(() => {
+    const autoLoadRecentDiagram = async () => {
+      if (!user || hasAutoLoaded) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("diagrams")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error || !data) return;
+
+        setPrompt(data.prompt);
+        setStyle(data.style);
+        setDiagram(data.diagram_data);
+        setCurrentDiagramId(data.id);
+        setShareToken(data.share_token);
+        setIsPublic(data.is_public);
+        setHasAutoLoaded(true);
+        toast.success("Loaded your most recent diagram");
+      } catch (error) {
+        // No recent diagram, silently continue
+        console.log("No recent diagram to load");
+      }
+    };
+
+    if (user && !hasAutoLoaded) {
+      autoLoadRecentDiagram();
+    }
+  }, [user, hasAutoLoaded]);
 
   useEffect(() => {
     const checkAuth = async () => {
