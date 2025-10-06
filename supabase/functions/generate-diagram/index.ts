@@ -261,6 +261,13 @@ CRITICAL RULES - FOLLOW EXACTLY:
 6. Add clear arrow labels showing data flow
 7. Apply professional color styling
 
+EDGE LABEL SYNTAX RULES (CRITICAL):
+- Keep edge labels simple: -->|Simple text| or -->|"Quoted text"|
+- NEVER use parentheses () in edge labels
+- NEVER use special chars like @#$%& in labels
+- Good: -->|Notifies| or -->|HTTP Request| or -->|"Sends data"|
+- Bad: -->|Notify (e.g., user signup)| or -->|Call @service|
+
 ${styleInstruction}
 
 ${iconInstructions}
@@ -354,6 +361,11 @@ graph TD
     if (firstDiagramLine > 0) {
       cleaned = lines.slice(firstDiagramLine).join('\n').trim();
     }
+    
+    // Sanitize edge labels to prevent syntax errors with parentheses
+    cleaned = cleaned.replace(/\|([^|]*?)\([^)]*?\)([^|]*?)\|/g, (match, before, after) => {
+      return `|${before.trim()} ${after.trim()}|`;
+    });
 
     console.log('Successfully generated diagram. First 200 chars:', cleaned.substring(0, 200));
 
